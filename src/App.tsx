@@ -93,7 +93,7 @@ function App() {
       </main>
 
       {word && <WordModal word={word} isKnown={!!known[word.word]} state={wordAnswer} onAnswer={answerWord} onClose={() => setWord(null)} />}
-      {proveOpen && <ProveModal story={story} loading={proveLoading} state={proveAnswer} setState={setProveAnswer} onClose={() => setProveOpen(false)} />}
+      {proveOpen && <ProveModal story={story} page={page} displayName={displayName} loading={proveLoading} state={proveAnswer} setState={setProveAnswer} onClose={() => setProveOpen(false)} />}
     </div>
   )
 }
@@ -128,6 +128,7 @@ function Welcome({ name, setName, interest, setInterest, onStart }: { name:strin
 
 function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Story;page:number;known:Record<string,boolean>;displayName:string;onWord:(w:Word)=>void;onProve:()=>void;onNext:()=>void}) {
   const text = story.paragraphs[page].replaceAll('Mila', story.id==='mila'?displayName:'Mila')
+  const pageWords = story.words.filter(w => text.toLowerCase().includes(w.word.toLowerCase()))
   const pieces = text.split(new RegExp(`(${story.words.map(w=>w.word).join('|')})`, 'gi'))
   return <section className="reader layout">
     <aside className="story-side">
@@ -142,7 +143,7 @@ function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Stor
         const w=story.words.find(x=>x.word.toLowerCase()===piece.toLowerCase())
         return w ? <button key={i} className={`word ${known[w.word]?'known':''}`} onClick={()=>onWord(w)}>{piece}{known[w.word]&&<Star size={12} fill="currentColor"/>}</button> : piece
       })}</div>
-      <div className="hint"><span>☝️</span><div><b>Spot a glowing word?</b><small>Tap it to discover what it means.</small></div></div>
+      <div className="word-shelf"><div><span>✨</span><p><b>New {pageWords.length === 1 ? 'word' : 'words'} on this page</b><small>Tap to learn the meaning right now</small></p></div><div>{pageWords.map(w => <button key={w.word} onClick={() => onWord(w)} className={known[w.word] ? 'learned' : ''}>{w.word}{known[w.word] ? <Star size={12} fill="currentColor"/> : <span>Tap for meaning</span>}</button>)}</div></div>
       <div className="reader-actions"><button className="secondary" onClick={onProve}><Sparkles size={18}/> Prove It <small>AI question</small></button><button className="primary" onClick={onNext}>{page===story.paragraphs.length-1?'Enter the story':'Next page'} <ArrowRight size={18}/></button></div>
     </article>
   </section>
@@ -198,9 +199,11 @@ function WordModal({word,isKnown,state,onAnswer,onClose}:{word:Word;isKnown:bool
   return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal word-modal" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={onClose}><X/></button><div className="word-orb">Aa</div><span className="modal-label">WORD DISCOVERY</span><h2>{word.word}</h2><p className="definition">{word.definition}</p><hr/><h3>{isKnown?'A word star is already yours!':'Which meaning matches?'}</h3><div className="mini-options">{word.choices.map((c,i)=><button key={c} disabled={state.revealed||isKnown} className={state.revealed&&i===word.correct?'correct':state.revealed&&state.selected===i?'wrong':''} onClick={()=>onAnswer(i)}>{c}{state.revealed&&i===word.correct&&<Check/>}</button>)}</div>{(state.revealed||isKnown)&&<div className="earned"><Star fill="currentColor"/> {isKnown?'You remembered this word!':'Word star earned!'}</div>}<button className="primary full" onClick={onClose}>{state.revealed||isKnown?'Back to the story':'Keep reading'}</button></div></div>
 }
 
-function ProveModal({story,loading,state,setState,onClose}:{story:Story;loading:boolean;state:AnswerState;setState:(s:AnswerState)=>void;onClose:()=>void}) {
-  const q=story.proveIt
-  return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal prove-modal" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={onClose}><X/></button>{loading?<div className="thinking"><div className="ai-orb pulse"><WandSparkles/></div><h2>Reading your page…</h2><p>Creating one question just for this moment.</p><div className="loading"><i/><i/><i/></div><small>Mock AI · reviewed fallback ready</small></div>:<><div className="pill"><Sparkles size={14}/> PROVE IT · AI QUESTION</div><h2>{q.question}</h2><div className="mini-options">{q.options.map((o,i)=><button key={o} disabled={state.revealed} className={state.revealed&&i===q.correct?'correct':state.revealed&&state.selected===i?'wrong':''} onClick={()=>setState({selected:i,revealed:true})}>{o}{state.revealed&&i===q.correct&&<Check/>}</button>)}</div>{state.revealed&&<div className="feedback good"><b>{state.selected===q.correct?'Great evidence!':'Here is the story clue:'}</b><p>{q.explanation}</p></div>}<button className="primary full" disabled={!state.revealed} onClick={onClose}>Back to my story</button></>}</div></div>
+function ProveModal({story,page,displayName,loading,state,setState,onClose}:{story:Story;page:number;displayName:string;loading:boolean;state:AnswerState;setState:(s:AnswerState)=>void;onClose:()=>void}) {
+  const raw = story.proveIt[page]
+  const personalize = (text: string) => story.id === 'mila' ? text.replaceAll('Mila', displayName) : text
+  const q = { ...raw, question: personalize(raw.question), options: raw.options.map(personalize), explanation: personalize(raw.explanation) }
+  return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal prove-modal" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={onClose}><X/></button>{loading?<div className="thinking"><div className="ai-orb pulse"><WandSparkles/></div><h2>Reading this page…</h2><p>Creating one question only from the words you can see.</p><div className="loading"><i/><i/><i/></div><small>Mock AI · page {page + 1} context · reviewed fallback ready</small></div>:<><div className="pill"><Sparkles size={14}/> PROVE IT · THIS PAGE</div><p className="context-note">Based only on page {page + 1} of {story.paragraphs.length}</p><h2>{q.question}</h2><div className="mini-options">{q.options.map((o,i)=><button key={o} disabled={state.revealed} className={state.revealed&&i===q.correct?'correct':state.revealed&&state.selected===i?'wrong':''} onClick={()=>setState({selected:i,revealed:true})}>{o}{state.revealed&&i===q.correct&&<Check/>}</button>)}</div>{state.revealed&&<div className="feedback good"><b>{state.selected===q.correct?'Great evidence!':'Here is the story clue:'}</b><p>{q.explanation}</p></div>}<button className="primary full" disabled={!state.revealed} onClick={onClose}>Back to my story</button></>}</div></div>
 }
 
 export default App
