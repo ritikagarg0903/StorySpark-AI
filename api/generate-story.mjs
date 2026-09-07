@@ -1,5 +1,5 @@
 const allowedInterests = ['Magic', 'Adventure', 'Space']
-const allowedTiers = ['Explorer', 'Pathfinder', 'Trailblazer']
+const allowedTiers = ['Grade 4-5', 'Grade 6-7', 'Grade 8']
 
 function validStory(value) {
   return value && typeof value.title === 'string' && typeof value.subtitle === 'string' &&
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(503).json({ error: 'Live story generation is not configured yet.' })
 
   const interest = allowedInterests.includes(req.body?.interest) ? req.body.interest : 'Adventure'
-  const tier = allowedTiers.includes(req.body?.tier) ? req.body.tier : 'Pathfinder'
+  const tier = allowedTiers.includes(req.body?.tier) ? req.body.tier : 'Grade 6-7'
   const reviewWords = Array.isArray(req.body?.reviewWords)
     ? req.body.reviewWords.map(String).map(w => w.toLowerCase().replace(/[^a-z'-]/g, '')).filter(Boolean).slice(0, 3)
     : []

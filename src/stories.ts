@@ -1,7 +1,7 @@
 export type Word = { word: string; definition: string; choices: string[]; correct: number }
 export type Story = {
   id: string
-  tier: 'Explorer' | 'Pathfinder' | 'Trailblazer'
+  tier: 'Grade 4-5' | 'Grade 6-7' | 'Grade 8'
   chapter: string
   title: string
   subtitle: string
@@ -19,7 +19,7 @@ export type Story = {
 
 export const stories: Story[] = [
   {
-    id: 'lumi', tier: 'Explorer', chapter: 'Case File 01', title: 'Lumi and the Vanishing Constellation',
+    id: 'lumi', tier: 'Grade 4-5', chapter: 'Case File 01', title: 'Lumi and the Vanishing Constellation',
     subtitle: 'A coded map. A fading garden. One night to solve the mystery.', theme: 'curiosity and collaboration', interest: 'Magic',
     image: '/stories/lumi-garden.png', alt: 'Lumi the firefly exploring a magical moonlit garden',
     paragraphs: [
@@ -55,7 +55,7 @@ export const stories: Story[] = [
     whatIf: { question: 'If Lumi’s hypothesis had been wrong, would recording the evidence still have value?', options: ['Yes, evidence can reveal mistakes and support a better explanation', 'No, incorrect hypotheses make all observations useless'], correct: 0, explanation: 'A hypothesis is meant to be tested. Careful records remain useful even when the first explanation changes.' }
   },
   {
-    id: 'mila', tier: 'Pathfinder', chapter: 'Case File 02', title: 'Mila and the Stormline Challenge',
+    id: 'mila', tier: 'Grade 6-7', chapter: 'Case File 02', title: 'Mila and the Stormline Challenge',
     subtitle: 'A damaged design. A rival team. A storm hiding an opportunity.', theme: 'resilience and ethical competition', interest: 'Adventure',
     image: '/stories/mila-kite.png', alt: 'Mila repairing a red kite in an attic during a storm',
     paragraphs: [
@@ -91,7 +91,7 @@ export const stories: Story[] = [
     whatIf: { question: 'If Mila’s first prototype had flown perfectly, what important learning might have been lost?', options: ['She might not have discovered how the joint handled pressure', 'She would have forgotten what a kite was'], correct: 0, explanation: 'The failed tests revealed information that helped Mila build a safer, more resilient design.' }
   },
   {
-    id: 'nova', tier: 'Trailblazer', chapter: 'Case File 03', title: 'The Luminous Protocol',
+    id: 'nova', tier: 'Grade 8', chapter: 'Case File 03', title: 'The Luminous Protocol',
     subtitle: 'A lunar anomaly. Conflicting orders. A decision that could reshape two worlds.', theme: 'responsibility and informed consensus', interest: 'Space',
     image: '/stories/nova-orion.png', alt: 'Nova and Orion investigating a glowing crystal inside a moon rover',
     paragraphs: [

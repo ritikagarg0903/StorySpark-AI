@@ -8,7 +8,7 @@ The app runs in **free development mode**. AI interactions use reviewed local co
 
 ## Features
 
-- Three illustrated, five-chapter story worlds across Explorer, Pathfinder, and Trailblazer levels
+- Three illustrated, five-chapter story worlds across Grade 4–5, Grade 6–7, and Grade 8 reading levels
 - Tap **any word** for a context-aware meaning; highlighted learning words also include mastery checks
 - Spaced vocabulary retrieval through later stories
 - “Prove It” contextual comprehension questions
