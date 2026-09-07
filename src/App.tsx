@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Home, RotateCcw, Sparkles, Star, Volume2, WandSparkles, X } from 'lucide-react'
+import { ArrowRight, BookOpen, Check, ChevronRight, LoaderCircle, RotateCcw, Sparkles, Star, Volume2, WandSparkles, X } from 'lucide-react'
 import { stories, type Story, type Word } from './stories'
 
 type Screen = 'welcome' | 'reader' | 'villain' | 'mistake' | 'whatif' | 'adapt' | 'recap'
@@ -20,6 +20,7 @@ function App() {
   const [known, setKnown] = useState<Record<string, boolean>>({})
   const [helped, setHelped] = useState<string[]>([])
   const [word, setWord] = useState<Word | null>(null)
+  const [wordLoading, setWordLoading] = useState(false)
   const [wordAnswer, setWordAnswer] = useState<AnswerState>({ selected: null, revealed: false })
   const [proveOpen, setProveOpen] = useState(false)
   const [proveLoading, setProveLoading] = useState(false)
@@ -27,7 +28,10 @@ function App() {
   const [villainChoice, setVillainChoice] = useState<number | null>(null)
   const [checkAnswer, setCheckAnswer] = useState<AnswerState>({ selected: null, revealed: false })
   const [stars, setStars] = useState(0)
-  const story = stories[storyIndex]
+  const [generatedStory, setGeneratedStory] = useState<Story | null>(null)
+  const [storyGenerating, setStoryGenerating] = useState(false)
+  const [storyError, setStoryError] = useState('')
+  const story = generatedStory ?? stories[storyIndex]
 
   const displayName = name.trim() || 'Explorer'
   const progress = screen === 'reader' ? 22 + page * 10 : screen === 'villain' ? 55 : screen === 'mistake' ? 68 : screen === 'whatif' ? 78 : screen === 'adapt' ? 90 : screen === 'recap' ? 100 : 0
@@ -45,10 +49,40 @@ function App() {
     setScreen('reader')
   }
 
-  function openWord(w: Word) {
+  async function openWord(w: Word, context = '') {
     setWord(w)
     setWordAnswer({ selected: null, revealed: false })
     if (!helped.includes(w.word)) setHelped(v => [...v, w.word])
+    if (w.choices.length) return
+    setWordLoading(true)
+    try {
+      const response = await fetch('/api/define-word', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ word: w.word, context }) })
+      const result = await response.json()
+      if (typeof result.definition === 'string') setWord(current => current?.word === w.word ? { ...current, definition: result.definition } : current)
+    } catch {
+      setWord(current => current?.word === w.word ? { ...current, definition: `Look at the words around “${w.word}” for clues to its meaning.` } : current)
+    } finally {
+      setWordLoading(false)
+    }
+  }
+
+  async function generateNextStory() {
+    setStoryGenerating(true)
+    setStoryError('')
+    try {
+      const response = await fetch('/api/generate-story', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interest, tier: personalizedStory.next.tier, reviewWords: Object.keys(known).slice(-3) }) })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Could not create the story')
+      const imageByInterest: Record<string, string> = { Magic: '/stories/lumi-garden.png', Adventure: '/stories/mila-kite.png', Space: '/stories/nova-orion.png' }
+      setGeneratedStory({ ...result, id: `gemini-${Date.now()}`, chapter: 'A brand-new AI story', tier: personalizedStory.next.tier, interest, image: imageByInterest[interest], alt: `An illustrated ${interest.toLowerCase()} story` } as Story)
+      setPage(0)
+      setVillainChoice(null)
+      setScreen('reader')
+    } catch (error) {
+      setStoryError(error instanceof Error ? error.message : 'Could not create the story')
+    } finally {
+      setStoryGenerating(false)
+    }
   }
 
   function answerWord(index: number) {
@@ -74,7 +108,7 @@ function App() {
   }
 
   function reset() {
-    setScreen('welcome'); setPage(0); setStoryIndex(0); setKnown({}); setHelped([]); setStars(0); setName('')
+    setScreen('welcome'); setPage(0); setStoryIndex(0); setGeneratedStory(null); setKnown({}); setHelped([]); setStars(0); setName('')
   }
 
   return (
@@ -88,11 +122,11 @@ function App() {
         {screen === 'villain' && <Villain story={story} choice={villainChoice} setChoice={setVillainChoice} onNext={() => { setCheckAnswer({selected:null,revealed:false}); setScreen('mistake') }} />}
         {screen === 'mistake' && <QuizCard eyebrow="COMPREHENSION CHALLENGE" title="Fix the mistake" icon="🔍" prompt={story.mistake.summary} options={story.mistake.options} correct={story.mistake.correct} state={checkAnswer} setState={setCheckAnswer} success="Sharp eyes! You compared the summary with what really happened." onNext={() => { setCheckAnswer({selected:null,revealed:false}); setScreen('whatif') }} />}
         {screen === 'whatif' && <QuizCard eyebrow="THINK DEEPER" title="What if?" icon="💭" prompt={story.whatIf.question} options={story.whatIf.options} correct={story.whatIf.correct} state={checkAnswer} setState={setCheckAnswer} success={story.whatIf.explanation} onNext={() => setScreen('adapt')} />}
-        {screen === 'adapt' && <Adapt name={displayName} story={story} next={personalizedStory.next} review={personalizedStory.review} onNext={() => { if (storyIndex < stories.length - 1) { setStoryIndex(v => v + 1); setPage(0); setVillainChoice(null); setScreen('reader') } else setScreen('recap') }} onRecap={() => setScreen('recap')} />}
+        {screen === 'adapt' && <Adapt name={displayName} story={story} next={personalizedStory.next} review={personalizedStory.review} generating={storyGenerating} error={storyError} onGenerate={generateNextStory} onNext={() => { setGeneratedStory(null); if (storyIndex < stories.length - 1) { setStoryIndex(v => v + 1); setPage(0); setVillainChoice(null); setScreen('reader') } else setScreen('recap') }} onRecap={() => setScreen('recap')} />}
         {screen === 'recap' && <Recap name={displayName} stars={stars} known={Object.keys(known)} helped={helped} story={story} onReset={reset} />}
       </main>
 
-      {word && <WordModal word={word} isKnown={!!known[word.word]} state={wordAnswer} onAnswer={answerWord} onClose={() => setWord(null)} />}
+      {word && <WordModal word={word} loading={wordLoading} isKnown={!!known[word.word]} state={wordAnswer} onAnswer={answerWord} onClose={() => setWord(null)} />}
       {proveOpen && <ProveModal story={story} page={page} displayName={displayName} loading={proveLoading} state={proveAnswer} setState={setProveAnswer} onClose={() => setProveOpen(false)} />}
     </div>
   )
@@ -126,10 +160,10 @@ function Welcome({ name, setName, interest, setInterest, onStart }: { name:strin
   </section>
 }
 
-function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Story;page:number;known:Record<string,boolean>;displayName:string;onWord:(w:Word)=>void;onProve:()=>void;onNext:()=>void}) {
+function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Story;page:number;known:Record<string,boolean>;displayName:string;onWord:(w:Word,context?:string)=>void;onProve:()=>void;onNext:()=>void}) {
   const text = story.paragraphs[page].replaceAll('Mila', story.id==='mila'?displayName:'Mila')
   const pageWords = story.words.filter(w => text.toLowerCase().includes(w.word.toLowerCase()))
-  const pieces = text.split(new RegExp(`(${story.words.map(w=>w.word).join('|')})`, 'gi'))
+  const pieces = text.split(/([A-Za-z]+(?:['’][A-Za-z]+)?)/g)
   return <section className="reader layout">
     <aside className="story-side">
       <span className="chapter">{story.chapter} · {story.tier}</span>
@@ -141,9 +175,11 @@ function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Stor
       <div className="reading-meta"><span><BookOpen size={17}/> Read along</span><button className="listen" onClick={()=>speechSynthesis.speak(new SpeechSynthesisUtterance(text))}><Volume2 size={17}/> Listen</button></div>
       <div className="story-text">{pieces.map((piece,i)=>{
         const w=story.words.find(x=>x.word.toLowerCase()===piece.toLowerCase())
-        return w ? <button key={i} className={`word ${known[w.word]?'known':''}`} onClick={()=>onWord(w)}>{piece}{known[w.word]&&<Star size={12} fill="currentColor"/>}</button> : piece
+        if (!/^[A-Za-z]/.test(piece)) return piece
+        const lookup = w || { word: piece.toLowerCase(), definition: 'Finding a simple meaning…', choices: [], correct: 0 }
+        return <button key={i} aria-label={`Define ${piece}`} className={w ? `word ${known[w.word]?'known':''}` : 'tappable-word'} onClick={()=>onWord(lookup,text)}>{piece}{w&&known[w.word]&&<Star size={12} fill="currentColor"/>}</button>
       })}</div>
-      <div className="word-shelf"><div><span>✨</span><p><b>New {pageWords.length === 1 ? 'word' : 'words'} on this page</b><small>Tap to learn the meaning right now</small></p></div><div>{pageWords.map(w => <button key={w.word} onClick={() => onWord(w)} className={known[w.word] ? 'learned' : ''}>{w.word}{known[w.word] ? <Star size={12} fill="currentColor"/> : <span>Tap for meaning</span>}</button>)}</div></div>
+      <div className="word-shelf"><div><span>✨</span><p><b>Every word is tappable</b><small>Tap any word in the paragraph for its meaning. Special learning words glow.</small></p></div><div>{pageWords.map(w => <button key={w.word} onClick={() => onWord(w,text)} className={known[w.word] ? 'learned' : ''}>{w.word}{known[w.word] ? <Star size={12} fill="currentColor"/> : <span>Tap for meaning</span>}</button>)}</div></div>
       <div className="reader-actions"><button className="secondary" onClick={onProve}><Sparkles size={18}/> Prove It <small>AI question</small></button><button className="primary" onClick={onNext}>{page===story.paragraphs.length-1?'Enter the story':'Next page'} <ArrowRight size={18}/></button></div>
     </article>
   </section>
@@ -172,7 +208,7 @@ function QuizCard({eyebrow,title,icon,prompt,options,correct,state,setState,succ
   </section>
 }
 
-function Adapt({name,story,next,review,onNext,onRecap}:{name:string;story:Story;next:Story;review:string;onNext:()=>void;onRecap:()=>void}) {
+function Adapt({name,story,next,review,generating,error,onGenerate,onNext,onRecap}:{name:string;story:Story;next:Story;review:string;generating:boolean;error:string;onGenerate:()=>void;onNext:()=>void;onRecap:()=>void}) {
   return <section className="center-stage adapt-stage">
     <div className="ai-orb"><WandSparkles size={34}/></div><div className="pill"><Sparkles size={15}/> MOCK AI · READY OFFLINE</div>
     <h1>Your next story is taking shape</h1><p className="lead">StorySpark noticed how you read and prepared the right next adventure for you.</p>
@@ -180,7 +216,8 @@ function Adapt({name,story,next,review,onNext,onRecap}:{name:string;story:Story;
       <div className="why-card"><span>WHY THIS STORY?</span><h2>Built for {name}</h2><ul><li><Check/> You explored <b>{story.theme}</b></li><li><Check/> <b>{review}</b> will return for practice</li><li><Check/> Sentences gently level up</li></ul><div className="privacy-note">🔒 No personal information was sent anywhere.</div></div>
       <div className="next-card"><img src={next.image} alt={next.alt}/><div><span>UP NEXT · {next.tier}</span><h2>{next.title}</h2><p>{next.subtitle}</p><div className="tags"><i>{next.interest}</i><i>Review: {review}</i></div></div></div>
     </div>
-    <div className="button-row"><button className="secondary" onClick={onRecap}>Finish & see recap</button><button className="primary" onClick={onNext}>{story.id==='nova'?'See my recap':'Read next story'} <ArrowRight/></button></div>
+    {error && <div className="generation-error">{error} The reviewed story is still ready below.</div>}
+    <div className="button-row"><button className="secondary" onClick={onRecap}>Finish & see recap</button><button className="secondary gemini-button" disabled={generating} onClick={onGenerate}>{generating?<LoaderCircle className="spin"/>:<WandSparkles/>}{generating?'Creating 5-page story…':'Create a new Gemini story'}</button><button className="primary" onClick={onNext}>{story.id==='nova'?'See my recap':'Read reviewed story'} <ArrowRight/></button></div>
   </section>
 }
 
@@ -195,8 +232,9 @@ function Recap({name,stars,known,helped,story,onReset}:{name:string;stars:number
   </section>
 }
 
-function WordModal({word,isKnown,state,onAnswer,onClose}:{word:Word;isKnown:boolean;state:AnswerState;onAnswer:(i:number)=>void;onClose:()=>void}) {
-  return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal word-modal" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={onClose}><X/></button><div className="word-orb">Aa</div><span className="modal-label">WORD DISCOVERY</span><h2>{word.word}</h2><p className="definition">{word.definition}</p><hr/><h3>{isKnown?'A word star is already yours!':'Which meaning matches?'}</h3><div className="mini-options">{word.choices.map((c,i)=><button key={c} disabled={state.revealed||isKnown} className={state.revealed&&i===word.correct?'correct':state.revealed&&state.selected===i?'wrong':''} onClick={()=>onAnswer(i)}>{c}{state.revealed&&i===word.correct&&<Check/>}</button>)}</div>{(state.revealed||isKnown)&&<div className="earned"><Star fill="currentColor"/> {isKnown?'You remembered this word!':'Word star earned!'}</div>}<button className="primary full" onClick={onClose}>{state.revealed||isKnown?'Back to the story':'Keep reading'}</button></div></div>
+function WordModal({word,loading,isKnown,state,onAnswer,onClose}:{word:Word;loading:boolean;isKnown:boolean;state:AnswerState;onAnswer:(i:number)=>void;onClose:()=>void}) {
+  const hasChallenge = word.choices.length > 0
+  return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal word-modal" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={onClose}><X/></button><div className="word-orb">Aa</div><span className="modal-label">WORD DISCOVERY</span><h2>{word.word}</h2><p className="definition">{loading?<><LoaderCircle className="spin"/> Finding its meaning in this sentence…</>:word.definition}</p>{hasChallenge&&<><hr/><h3>{isKnown?'A word star is already yours!':'Which meaning matches?'}</h3><div className="mini-options">{word.choices.map((c,i)=><button key={c} disabled={state.revealed||isKnown} className={state.revealed&&i===word.correct?'correct':state.revealed&&state.selected===i?'wrong':''} onClick={()=>onAnswer(i)}>{c}{state.revealed&&i===word.correct&&<Check/>}</button>)}</div>{(state.revealed||isKnown)&&<div className="earned"><Star fill="currentColor"/> {isKnown?'You remembered this word!':'Word star earned!'}</div>}</>}<button className="primary full" onClick={onClose}>{hasChallenge&&(state.revealed||isKnown)?'Back to the story':'Got it'}</button></div></div>
 }
 
 function ProveModal({story,page,displayName,loading,state,setState,onClose}:{story:Story;page:number;displayName:string;loading:boolean;state:AnswerState;setState:(s:AnswerState)=>void;onClose:()=>void}) {
