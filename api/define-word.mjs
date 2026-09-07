@@ -17,11 +17,28 @@ const fallbackDefinitions = {
   constellation: 'a group of stars that forms a recognizable pattern', intricate: 'containing many small, carefully connected details',
   migrating: 'moving from one region to another at a regular time', deliberate: 'done intentionally and with careful thought',
   hypothesis: 'an explanation that can be tested with evidence', anomaly: 'something different from what is normally expected',
-  protocol: 'an official set of rules for handling a situation', consensus: 'general agreement reached by a group'
+  protocol: 'an official set of rules for handling a situation', consensus: 'general agreement reached by a group',
+  settlement: 'a community where people establish homes and live together', observatory: 'a place equipped for studying space and the sky',
+  retrieve: 'to go and bring something back', crater: 'a large bowl-shaped hollow in the ground',
+  authority: 'the official power or right to make decisions', uncertainty: 'a state of not knowing what will happen or what is true'
 }
 
 function cleanWord(value) {
   return String(value || '').toLowerCase().replace(/[^a-z'-]/g, '').slice(0, 40)
+}
+
+async function dictionaryDefinition(word) {
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
+      signal: AbortSignal.timeout(3000)
+    })
+    if (!response.ok) return ''
+    const entries = await response.json()
+    const definition = entries?.[0]?.meanings?.flatMap(meaning => meaning.definitions || [])?.find(item => typeof item.definition === 'string')?.definition
+    return typeof definition === 'string' ? definition.slice(0, 180) : ''
+  } catch {
+    return ''
+  }
 }
 
 export default async function handler(req, res) {
@@ -33,11 +50,12 @@ export default async function handler(req, res) {
   const local = fallbackDefinitions[word]
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) {
+    const dictionary = local || await dictionaryDefinition(word)
     return res.status(200).json({
       word,
-      definition: local || `a word used in this sentence; read the words around “${word}” for clues`,
+      definition: dictionary || `A definition for “${word}” is temporarily unavailable. Please try again.`,
       example: context,
-      source: 'offline'
+      source: local ? 'reviewed' : dictionary ? 'dictionary' : 'unavailable'
     })
   }
 
@@ -58,11 +76,12 @@ export default async function handler(req, res) {
     if (typeof parsed.definition !== 'string' || parsed.definition.length > 180) throw new Error('Invalid definition')
     return res.status(200).json({ word, definition: parsed.definition, example: context, source: 'gemini' })
   } catch {
+    const dictionary = local || await dictionaryDefinition(word)
     return res.status(200).json({
       word,
-      definition: local || `a word used in this sentence; use the surrounding words to help understand “${word}”`,
+      definition: dictionary || `A definition for “${word}” is temporarily unavailable. Please try again.`,
       example: context,
-      source: 'fallback'
+      source: local ? 'reviewed' : dictionary ? 'dictionary' : 'unavailable'
     })
   }
 }

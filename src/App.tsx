@@ -71,7 +71,7 @@ function App() {
       const result = await response.json()
       if (typeof result.definition === 'string') setWord(current => current?.word === w.word ? { ...current, definition: result.definition } : current)
     } catch {
-      setWord(current => current?.word === w.word ? { ...current, definition: `Look at the words around “${w.word}” for clues to its meaning.` } : current)
+      setWord(current => current?.word === w.word ? { ...current, definition: `The definition for “${w.word}” could not load. Please try tapping it again.` } : current)
     } finally {
       setWordLoading(false)
     }
