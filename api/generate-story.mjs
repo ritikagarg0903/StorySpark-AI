@@ -21,9 +21,13 @@ export default async function handler(req, res) {
   const reviewWords = Array.isArray(req.body?.reviewWords)
     ? req.body.reviewWords.map(String).map(w => w.toLowerCase().replace(/[^a-z'-]/g, '')).filter(Boolean).slice(0, 3)
     : []
+  const wordsMastered = Math.max(0, Math.min(50, Number(req.body?.wordsMastered) || 0))
+  const wordsExplored = Math.max(0, Math.min(50, Number(req.body?.wordsExplored) || 0))
+  const previousTheme = String(req.body?.previousTheme || '').replace(/[^a-z ,'-]/gi, '').slice(0, 80)
 
   const prompt = `Create a completely original, intelligent English reading adventure for ages 9-13.
 Interest: ${interest}. Reading tier: ${tier}. Naturally reuse these review words: ${reviewWords.join(', ') || 'brave, discover'}.
+Reader progress: ${wordsMastered} vocabulary words mastered and ${wordsExplored} explored. Previous theme: ${previousTheme || 'not provided'}.
 Write exactly 5 paragraphs, each 75-110 words. Maintain one coherent plot with setup, escalating problem, two meaningful attempts, a difficult choice, and a satisfying resolution.
 Use vivid but accessible prose, logical cause and effect, nuanced character motives, and age-appropriate academic vocabulary. Avoid babyish language and obvious morals.
 No graphic violence, romance, brands, personal data, external links, or frightening danger. Do not include a child's name.
