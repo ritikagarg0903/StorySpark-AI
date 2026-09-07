@@ -1,6 +1,6 @@
 # StorySpark AI
 
-An adaptive English reading game for young learners, built for the Nerdy AI Hackathon. Children explore illustrated stories, learn vocabulary through spaced retrieval, answer contextual comprehension questions, switch character perspectives, and receive a personalized next story plus a grown-up recap.
+An adaptive English reading game for readers ages 9–13, built for the Nerdy AI Hackathon. Learners investigate illustrated, five-chapter stories, build vocabulary through spaced retrieval, answer page-grounded comprehension questions, switch character perspectives, and receive a personalized next story plus a grown-up recap.
 
 ## Current mode
 
@@ -8,7 +8,7 @@ The app runs in **free development mode**. AI interactions use reviewed local co
 
 ## Features
 
-- Three illustrated story worlds across three difficulty levels
+- Three illustrated, five-chapter story worlds across Explorer, Pathfinder, and Trailblazer levels
 - Tap **any word** for a context-aware meaning; highlighted learning words also include mastery checks
 - Spaced vocabulary retrieval through later stories
 - “Prove It” contextual comprehension questions

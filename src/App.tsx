@@ -6,9 +6,9 @@ type Screen = 'welcome' | 'reader' | 'villain' | 'mistake' | 'whatif' | 'adapt' 
 type AnswerState = { selected: number | null; revealed: boolean }
 
 const interests = [
-  { name: 'Magic', icon: '✨', desc: 'Enchanted gardens & tiny heroes' },
-  { name: 'Adventure', icon: '🪁', desc: 'Brave plans & big discoveries' },
-  { name: 'Space', icon: '🪐', desc: 'Moon rovers & cosmic mysteries' },
+  { name: 'Magic', icon: '✨', desc: 'Ancient clues & impossible mysteries' },
+  { name: 'Adventure', icon: '🪁', desc: 'Bold inventions & difficult choices' },
+  { name: 'Space', icon: '🪐', desc: 'Lunar science & cosmic dilemmas' },
 ]
 
 function App() {
@@ -34,7 +34,8 @@ function App() {
   const story = generatedStory ?? stories[storyIndex]
 
   const displayName = name.trim() || 'Explorer'
-  const progress = screen === 'reader' ? 22 + page * 10 : screen === 'villain' ? 55 : screen === 'mistake' ? 68 : screen === 'whatif' ? 78 : screen === 'adapt' ? 90 : screen === 'recap' ? 100 : 0
+  const readingProgress = 18 + Math.round(((page + 1) / story.paragraphs.length) * 37)
+  const progress = screen === 'reader' ? readingProgress : screen === 'villain' ? 62 : screen === 'mistake' ? 72 : screen === 'whatif' ? 82 : screen === 'adapt' ? 92 : screen === 'recap' ? 100 : 0
 
   const personalizedStory = useMemo(() => {
     const next = stories[Math.min(storyIndex + 1, stories.length - 1)]
@@ -143,10 +144,10 @@ function Header({ screen, progress, stars, onHome }: { screen: Screen; progress:
 function Welcome({ name, setName, interest, setInterest, onStart }: { name:string; setName:(v:string)=>void; interest:string; setInterest:(v:string)=>void; onStart:()=>void }) {
   return <section className="welcome layout">
     <div className="hero-copy">
-      <div className="pill"><WandSparkles size={15}/> STORIES THAT GROW WITH YOU</div>
+      <div className="pill"><WandSparkles size={15}/> MADE FOR READERS AGES 9–13</div>
       <h1>Every great reader<br/>starts with a <em>spark.</em></h1>
-      <p>Step inside magical stories that remember the words you learn, change with every choice, and make you the hero.</p>
-      <div className="trust-row"><span>✓ No account</span><span>✓ Safe for young readers</span><span>✓ Grown-up recap</span></div>
+      <p>Investigate layered mysteries, master powerful vocabulary, defend your ideas, and shape stories that remember how you learn.</p>
+      <div className="trust-row"><span>✓ No account</span><span>✓ Designed for ages 9–13</span><span>✓ Grown-up recap</span></div>
     </div>
     <div className="start-card">
       <span className="step-label">YOUR ADVENTURE STARTS HERE</span>
@@ -214,10 +215,10 @@ function Adapt({name,story,next,review,generating,error,onGenerate,onNext,onReca
     <h1>Your next story is taking shape</h1><p className="lead">StorySpark noticed how you read and prepared the right next adventure for you.</p>
     <div className="adapt-grid">
       <div className="why-card"><span>WHY THIS STORY?</span><h2>Built for {name}</h2><ul><li><Check/> You explored <b>{story.theme}</b></li><li><Check/> <b>{review}</b> will return for practice</li><li><Check/> Sentences gently level up</li></ul><div className="privacy-note">🔒 No personal information was sent anywhere.</div></div>
-      <div className="next-card"><img src={next.image} alt={next.alt}/><div><span>UP NEXT · {next.tier}</span><h2>{next.title}</h2><p>{next.subtitle}</p><div className="tags"><i>{next.interest}</i><i>Review: {review}</i></div></div></div>
+      <button type="button" className="next-card" onClick={onNext} aria-label={`Open next story: ${next.title}`}><img src={next.image} alt={next.alt}/><div><span>UP NEXT · {next.tier}</span><h2>{next.title}</h2><p>{next.subtitle}</p><div className="tags"><i>{next.interest}</i><i>Review: {review}</i></div><strong className="card-cta">Open this story <ArrowRight size={17}/></strong></div></button>
     </div>
     {error && <div className="generation-error">{error} The reviewed story is still ready below.</div>}
-    <div className="button-row"><button className="secondary" onClick={onRecap}>Finish & see recap</button><button className="secondary gemini-button" disabled={generating} onClick={onGenerate}>{generating?<LoaderCircle className="spin"/>:<WandSparkles/>}{generating?'Creating 5-page story…':'Create a new Gemini story'}</button><button className="primary" onClick={onNext}>{story.id==='nova'?'See my recap':'Read reviewed story'} <ArrowRight/></button></div>
+    <div className="button-row"><button className="primary continue-button" onClick={onNext}>{story.id==='nova'?'See my recap':'Read the next story'} <ArrowRight/></button><button className="secondary gemini-button" disabled={generating} onClick={onGenerate}>{generating?<LoaderCircle className="spin"/>:<WandSparkles/>}{generating?'Creating 5-page story…':'Create a new Gemini story'}</button><button className="secondary" onClick={onRecap}>Finish & see recap</button></div>
   </section>
 }
 
