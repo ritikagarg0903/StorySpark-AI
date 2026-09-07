@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ArrowRight, BookOpen, Check, ChevronRight, LoaderCircle, RotateCcw, Sparkles, Star, Volume2, WandSparkles, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowRight, BookOpen, Check, ChevronRight, LoaderCircle, Pause, Play, RotateCcw, Sparkles, Star, Volume2, WandSparkles, X } from 'lucide-react'
 import { stories, type Story, type Word } from './stories'
 
 type Screen = 'welcome' | 'reader' | 'villain' | 'mistake' | 'whatif' | 'adapt' | 'recap'
@@ -137,7 +137,7 @@ function Header({ screen, progress, stars, onHome }: { screen: Screen; progress:
   return <header className="topbar">
     <button className="brand" onClick={onHome} aria-label="StorySpark home"><span className="brand-mark"><Sparkles size={20}/></span><span>StorySpark <b>AI</b></span></button>
     {screen !== 'welcome' && <div className="journey"><span>Your reading journey</span><div className="progress"><i style={{width:`${progress}%`}} /></div><strong>{progress}%</strong></div>}
-    <div className="star-count"><Star size={18} fill="currentColor" /> {stars} word stars</div>
+    <div className="star-count" title="Earn a vocabulary star by correctly identifying a highlighted word's meaning"><Star size={18} fill="currentColor" /> {stars} vocabulary {stars === 1 ? 'star' : 'stars'}</div>
   </header>
 }
 
@@ -165,6 +165,47 @@ function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Stor
   const text = story.paragraphs[page].replaceAll('Mila', story.id==='mila'?displayName:'Mila')
   const pageWords = story.words.filter(w => text.toLowerCase().includes(w.word.toLowerCase()))
   const pieces = text.split(/([A-Za-z]+(?:['’][A-Za-z]+)?)/g)
+  const [listening, setListening] = useState<'idle'|'speaking'|'paused'>('idle')
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+
+  useEffect(() => {
+    setListening('idle')
+    return () => {
+      if (utteranceRef.current) utteranceRef.current.onend = null
+      window.speechSynthesis?.cancel()
+      utteranceRef.current = null
+    }
+  }, [text])
+
+  function toggleListening() {
+    if (!('speechSynthesis' in window)) return
+    if (listening === 'speaking') {
+      window.speechSynthesis.pause()
+      setListening('paused')
+      return
+    }
+    if (listening === 'paused') {
+      window.speechSynthesis.resume()
+      setListening('speaking')
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.rate = .9
+    utteranceRef.current = utterance
+    utterance.onend = () => {
+      utteranceRef.current = null
+      setListening('idle')
+      onNext()
+    }
+    utterance.onerror = () => {
+      utteranceRef.current = null
+      setListening('idle')
+    }
+    window.speechSynthesis.speak(utterance)
+    setListening('speaking')
+  }
+
   return <section className="reader layout">
     <aside className="story-side">
       <span className="chapter">{story.chapter} · {story.tier}</span>
@@ -173,7 +214,7 @@ function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Stor
       <div className="page-dots">{story.paragraphs.map((_,i)=><i key={i} className={i===page?'active':''}/>)}</div>
     </aside>
     <article className="reading-card">
-      <div className="reading-meta"><span><BookOpen size={17}/> Read along</span><button className="listen" onClick={()=>speechSynthesis.speak(new SpeechSynthesisUtterance(text))}><Volume2 size={17}/> Listen</button></div>
+      <div className="reading-meta"><span><BookOpen size={17}/> Read along</span><button className={`listen ${listening}`} onClick={toggleListening} aria-label={listening === 'speaking' ? 'Pause narration' : listening === 'paused' ? 'Resume narration' : 'Listen to this page'}>{listening === 'speaking' ? <Pause size={17}/> : listening === 'paused' ? <Play size={17}/> : <Volume2 size={17}/>} {listening === 'speaking' ? 'Pause' : listening === 'paused' ? 'Resume' : 'Listen'}</button></div>
       <div className="story-text">{pieces.map((piece,i)=>{
         const w=story.words.find(x=>x.word.toLowerCase()===piece.toLowerCase())
         if (!/^[A-Za-z]/.test(piece)) return piece
