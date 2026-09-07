@@ -42,7 +42,7 @@ Two Vercel server functions are included:
 - `/api/define-word` returns an age-appropriate meaning based on the visible sentence.
 - `/api/generate-story` creates a validated five-page story with vocabulary and comprehension activities.
 
-Add `GEMINI_API_KEY` in **Vercel → Project Settings → Environment Variables**, then redeploy. Optionally set `GEMINI_MODEL`; the default is `gemini-3.7-flash`. Never place the key in frontend code or commit it to GitHub.
+Add `GEMINI_API_KEY` in **Vercel → Project Settings → Environment Variables**, then redeploy. Optionally set `GEMINI_MODEL`; the default is `gemini-2.5-flash`. Never place the key in frontend code or commit it to GitHub.
 
 If Gemini is unavailable, reviewed local stories remain usable. The learner's display name is never sent to Gemini.
 

@@ -174,45 +174,66 @@ function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Stor
   const text = story.paragraphs[page].replaceAll('Mila', story.id==='mila'?displayName:'Mila')
   const pageWords = story.words.filter(w => text.toLowerCase().includes(w.word.toLowerCase()))
   const pieces = text.split(/([A-Za-z]+(?:['’][A-Za-z]+)?)/g)
+  let pieceOffset = 0
+  const segments = pieces.map(piece => { const start = pieceOffset; pieceOffset += piece.length; return { piece, start } })
   const [listening, setListening] = useState<'idle'|'speaking'|'paused'>('idle')
+  const [activeChar, setActiveChar] = useState(-1)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const continueReadingRef = useRef(false)
 
   useEffect(() => {
     setListening('idle')
+    setActiveChar(-1)
+    const timer = continueReadingRef.current ? window.setTimeout(startNarration, 120) : undefined
     return () => {
+      if (timer) window.clearTimeout(timer)
       if (utteranceRef.current) utteranceRef.current.onend = null
       window.speechSynthesis?.cancel()
       utteranceRef.current = null
     }
   }, [text])
 
-  function toggleListening() {
+  function startNarration() {
     if (!('speechSynthesis' in window)) return
-    if (listening === 'speaking') {
-      window.speechSynthesis.pause()
-      setListening('paused')
-      return
-    }
-    if (listening === 'paused') {
-      window.speechSynthesis.resume()
-      setListening('speaking')
-      return
-    }
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = .9
     utteranceRef.current = utterance
+    utterance.onboundary = event => {
+      if (event.name === 'word') setActiveChar(event.charIndex)
+    }
     utterance.onend = () => {
       utteranceRef.current = null
+      setActiveChar(-1)
       setListening('idle')
       onNext()
     }
     utterance.onerror = () => {
       utteranceRef.current = null
+      continueReadingRef.current = false
+      setActiveChar(-1)
       setListening('idle')
     }
     window.speechSynthesis.speak(utterance)
     setListening('speaking')
+  }
+
+  function toggleListening() {
+    if (!('speechSynthesis' in window)) return
+    if (listening === 'speaking') {
+      continueReadingRef.current = false
+      window.speechSynthesis.pause()
+      setListening('paused')
+      return
+    }
+    if (listening === 'paused') {
+      continueReadingRef.current = true
+      window.speechSynthesis.resume()
+      setListening('speaking')
+      return
+    }
+    continueReadingRef.current = true
+    startNarration()
   }
 
   return <section className="reader layout">
@@ -223,12 +244,14 @@ function Reader({story,page,known,displayName,onWord,onProve,onNext}:{story:Stor
       <div className="page-dots">{story.paragraphs.map((_,i)=><i key={i} className={i===page?'active':''}/>)}</div>
     </aside>
     <article className="reading-card">
-      <div className="reading-meta"><span><BookOpen size={17}/> Read along</span><button className={`listen ${listening}`} onClick={toggleListening} aria-label={listening === 'speaking' ? 'Pause narration' : listening === 'paused' ? 'Resume narration' : 'Listen to this page'}>{listening === 'speaking' ? <Pause size={17}/> : listening === 'paused' ? <Play size={17}/> : <Volume2 size={17}/>} {listening === 'speaking' ? 'Pause' : listening === 'paused' ? 'Resume' : 'Listen'}</button></div>
-      <div className="story-text">{pieces.map((piece,i)=>{
+      <div className="reading-meta"><span title="Words highlight as the narrator reads"><BookOpen size={17}/> Read along <small>follow the highlighted word</small></span><button className={`listen ${listening}`} onClick={toggleListening} aria-label={listening === 'speaking' ? 'Pause narration' : listening === 'paused' ? 'Resume narration' : 'Listen continuously'}>{listening === 'speaking' ? <Pause size={17}/> : listening === 'paused' ? <Play size={17}/> : <Volume2 size={17}/>} {listening === 'speaking' ? 'Pause' : listening === 'paused' ? 'Resume' : 'Listen continuously'}</button></div>
+      <div className="story-text">{segments.map(({piece,start},i)=>{
         const w=story.words.find(x=>x.word.toLowerCase()===piece.toLowerCase())
         if (!/^[A-Za-z]/.test(piece)) return piece
         const lookup = w || { word: piece.toLowerCase(), definition: 'Finding a simple meaning…', choices: [], correct: 0 }
-        return <button key={i} aria-label={`Define ${piece}`} className={w ? `word ${known[w.word]?'known':''}` : 'tappable-word'} onClick={()=>onWord(lookup,text)}>{piece}{w&&known[w.word]&&<Star size={12} fill="currentColor"/>}</button>
+        const spoken = activeChar >= start && activeChar < start + piece.length
+        const baseClass = w ? `word ${known[w.word]?'known':''}` : 'tappable-word'
+        return <button key={i} aria-label={`Define ${piece}`} className={`${baseClass} ${spoken?'speaking-word':''}`} onClick={()=>onWord(lookup,text)}>{piece}{w&&known[w.word]&&<Star size={12} fill="currentColor"/>}</button>
       })}</div>
       <div className="word-shelf"><div><span>✨</span><p><b>Every word is tappable</b><small>Tap any word in the paragraph for its meaning. Special learning words glow.</small></p></div><div>{pageWords.map(w => <button key={w.word} onClick={() => onWord(w,text)} className={known[w.word] ? 'learned' : ''}>{w.word}{known[w.word] ? <Star size={12} fill="currentColor"/> : <span>Tap for meaning</span>}</button>)}</div></div>
       <div className="reader-actions"><button className="secondary" onClick={onProve}><Sparkles size={18}/> Prove It <small>AI question</small></button><button className="primary" onClick={onNext}>{page===story.paragraphs.length-1?'Enter the story':'Next page'} <ArrowRight size={18}/></button></div>

@@ -13,7 +13,11 @@ const fallbackDefinitions = {
   strong: 'able to hold, carry, or resist force well', rain: 'drops of water that fall from clouds',
   window: 'an opening with glass that lets in light', clouds: 'collections of tiny water drops in the sky',
   crystal: 'a clear or shining solid with an orderly shape', energy: 'power that allows something to work or move',
-  rover: 'a vehicle made to travel across another planet or moon', safely: 'in a way that avoids danger or harm'
+  rover: 'a vehicle made to travel across another planet or moon', safely: 'in a way that avoids danger or harm',
+  constellation: 'a group of stars that forms a recognizable pattern', intricate: 'containing many small, carefully connected details',
+  migrating: 'moving from one region to another at a regular time', deliberate: 'done intentionally and with careful thought',
+  hypothesis: 'an explanation that can be tested with evidence', anomaly: 'something different from what is normally expected',
+  protocol: 'an official set of rules for handling a situation', consensus: 'general agreement reached by a group'
 }
 
 function cleanWord(value) {
@@ -38,12 +42,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const model = process.env.GEMINI_MODEL || 'gemini-3.7-flash'
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `Define the word "${word}" exactly as it is used in this passage: "${context}". Audience: ages 6-9. Use one short sentence, no more than 16 words. Return JSON with one field named definition.` }] }],
+        contents: [{ parts: [{ text: `Define the word "${word}" exactly as it is used in this passage: "${context}". Audience: ages 9-13. Use one clear sentence, no more than 18 words. Return JSON with one field named definition.` }] }],
         generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 80 }
       })
     })

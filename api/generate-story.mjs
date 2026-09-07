@@ -38,7 +38,7 @@ Return JSON only, using exactly this shape:
 {"title":"","subtitle":"","theme":"","paragraphs":["","","","",""],"words":[{"word":"","definition":"","choices":["","",""],"correct":0}],"proveIt":[{"question":"","options":["","",""],"correct":0,"explanation":""}],"villain":{"character":"","prompt":"","options":[{"line":"","result":""},{"line":"","result":""},{"line":"","result":""}]},"mistake":{"summary":"","options":["","",""],"correct":0},"whatIf":{"question":"","options":["",""],"correct":0,"explanation":""}}`
 
   try {
-    const model = process.env.GEMINI_MODEL || 'gemini-3.7-flash'
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
